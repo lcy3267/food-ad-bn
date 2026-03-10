@@ -1,0 +1,60 @@
+:root {
+  --orange: #FF6B35;
+  --peach: #FFB347;
+  --cream: #FFF8F0;
+  --warm-white: #FFFDF9;
+  --brown: #3D1F00;
+  --soft-brown: #7A4E2D;
+  --green: #5CB85C;
+  --radius: 20px;
+  --phone-scale: 0.82;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  font-family: 'Noto Sans SC', sans-serif;
+  background: var(--cream);
+  min-height: 100vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255,179,71,0.2) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(255,107,53,0.15) 0%, transparent 50%),
+    #FFF3E0;
+  z-index: -1;
+}
+
+#app {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Scrollbar hide */
+::-webkit-scrollbar { display: none; }
+* { scrollbar-width: none; }
+
+/* Transitions */
+.slide-enter-active,
+.slide-leave-active {
+  transition: transform 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.5s ease;
+  position: absolute;
+}
+.slide-enter-from { transform: translateX(100%); opacity: 0; }
+.slide-leave-to   { transform: translateX(-100%); opacity: 0; }
+
+.msg-enter-active { animation: msgIn 0.35s cubic-bezier(0.4,0,0.2,1) forwards; }
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

@@ -1,0 +1,12 @@
+node_modules
+.DS_Store
+dist-ssr
+.vscode
+.hbuilderx
+*.local
+*.zip
+.git
+.svn
+.idea
+components.d.ts
+.vite
