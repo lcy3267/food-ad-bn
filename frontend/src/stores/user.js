@@ -3,6 +3,8 @@ import { ref, computed } from 'vue'
 import { createUser, getUser, updateUser } from '../api/index.js'
 
 const STORAGE_KEY = 'diet_companion_uid'
+const USER_DATA_KEY = 'diet_companion_user_data'
+const FROM_CHAT_KEY = 'diet_companion_from_chat'
 
 export const useUserStore = defineStore('user', () => {
   const id = ref(null)
@@ -14,6 +16,7 @@ export const useUserStore = defineStore('user', () => {
   const habits = ref([])
   const goals = ref([])
   const loaded = ref(false)
+  const fromChat = ref(false)
 
   const bmi = computed(() => {
     const h = height.value / 100
@@ -27,6 +30,13 @@ export const useUserStore = defineStore('user', () => {
   })
 
   async function init() {
+    // 检查是否从聊天页跳转过来
+    const fromChatStored = localStorage.getItem(FROM_CHAT_KEY)
+    if (fromChatStored === 'true') {
+      fromChat.value = true
+      localStorage.removeItem(FROM_CHAT_KEY)
+    }
+
     let uid = localStorage.getItem(STORAGE_KEY)
     if (uid) {
       try {
@@ -49,6 +59,11 @@ export const useUserStore = defineStore('user', () => {
     loaded.value = true
   }
 
+  function setFromChat() {
+    fromChat.value = true
+    localStorage.setItem(FROM_CHAT_KEY, 'true')
+  }
+
   async function save(fields = {}) {
     if (!id.value) return
     const data = {}
@@ -66,5 +81,5 @@ export const useUserStore = defineStore('user', () => {
     !!gender.value && !!region.value && habits.value.length > 0 && goals.value.length > 0
   )
 
-  return { id, age, gender, height, weight, region, habits, goals, loaded, bmi, bodyFat, isProfileComplete, init, save }
+  return { id, age, gender, height, weight, region, habits, goals, loaded, fromChat, bmi, bodyFat, isProfileComplete, init, save, setFromChat }
 })

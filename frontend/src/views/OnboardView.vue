@@ -125,6 +125,7 @@ const userStore = useUserStore()
 const scrollEl = ref(null)
 const toast = ref('')
 const saving = ref(false)
+const checking = ref(true)
 
 const cities = ['北京','上海','广州','深圳','成都','杭州','武汉','西安','重庆']
 const habitOptions = ['🏠 自己在家做','🍽️ 餐厅堂食','📦 外卖']
@@ -138,6 +139,14 @@ const form = ref({
 // Sync from store after it loads
 watch(() => userStore.loaded, (v) => {
   if (!v) return
+  checking.value = false
+  
+  // 如果用户信息已完整且不是从聊天页过来，自动跳转到聊天界面
+  if (userStore.isProfileComplete && !userStore.fromChat) {
+    router.push('/chat')
+    return
+  }
+  
   form.value = {
     age: userStore.age,
     gender: userStore.gender,

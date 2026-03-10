@@ -411,6 +411,8 @@ function autoResize() {
 }
 
 function goBack() {
+  // 标记是从聊天页跳转过来的，避免在 OnboardView 自动跳回
+  userStore.setFromChat()
   router.push('/')
 }
 
