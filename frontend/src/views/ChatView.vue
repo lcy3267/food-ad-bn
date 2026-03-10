@@ -43,16 +43,21 @@
         </div>
 
         <!-- Card list (food or exercise) -->
-        <div v-else-if="item.type === 'cards'" class="card-list msg-enter-active">
-          <RecCard
-            v-for="(card, ci) in item.cards"
-            :key="ci"
-            :card="card"
-            :confirmed="item.confirmedIdx === ci"
-            :faded="item.confirmedIdx !== null && item.confirmedIdx !== ci"
-            @confirm="onConfirmCard(item, ci)"
-          />
-        </div>
+        <transition
+          name="card-collapse"
+          v-else-if="item.type === 'cards' && !item.collapsed"
+        >
+          <div class="card-list msg-enter-active">
+            <RecCard
+              v-for="(card, ci) in item.cards"
+              :key="ci"
+              :card="card"
+              :confirmed="item.confirmedIdx === ci"
+              :faded="item.confirmedIdx !== null && item.confirmedIdx !== ci"
+              @confirm="onConfirmCard(item, ci)"
+            />
+          </div>
+        </transition>
 
         <!-- Confirmed pill -->
         <div v-else-if="item.type === 'pill'" class="msg-enter-active"
@@ -340,6 +345,9 @@ async function onConfirmCard(cardListItem, ci) {
 
   await delay(800)
   await fetchTips(card, isExercise)
+
+  // Collapse card list after we have shown follow-up content
+  cardListItem.collapsed = true
 }
 
 async function fetchTips(card, isExercise) {
@@ -517,6 +525,22 @@ onMounted(() => scrollBottom())
 .card-list {
   display: flex; flex-direction: column; gap: 8px;
   max-width: 86%;
+}
+
+/* Card collapse animation */
+.card-collapse-leave-active {
+  overflow: hidden;
+  transition: max-height 0.25s ease, opacity 0.25s ease, transform 0.25s ease;
+}
+.card-collapse-leave-from {
+  max-height: 600px;
+  opacity: 1;
+  transform: translateY(0);
+}
+.card-collapse-leave-to {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-8px);
 }
 
 /* Confirmed pill */
