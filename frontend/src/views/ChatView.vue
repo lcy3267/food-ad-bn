@@ -103,7 +103,6 @@ const inputEl = ref(null)
 const inputText = ref('')
 const loading = ref(false)
 const displayItems = ref([])
-const conversationHistory = ref([])
 
 const userAvatar = computed(() => {
   const age = userStore.age
@@ -211,8 +210,6 @@ async function sendUserMsg(text) {
   const hour = new Date().getHours()
   const late = isLateNight()
   const meal = hour < 14 ? '午餐' : '晚餐'
-  const bf = userStore.bodyFat
-  const bmi = userStore.bmi.toFixed(1)
 
   const wantsExercise = ['运动','健身','锻炼','跑步','减肥','燃脂','瑜伽','步行','有氧'].some(k => text.includes(k))
   const wantsFoodLate = !wantsExercise && late &&
@@ -234,41 +231,14 @@ async function sendUserMsg(text) {
     return
   }
 
-  const lateCtx = late
-    ? `【重要】现在是晚上${hour}点，已过19:00。严禁推荐任何正餐或高热量食物。如果用户问吃什么，要用轻快幽默的语气劝阻，提醒控制饮食，最多推荐低热量无负担的选项（如温水、无糖茶、黄瓜）。`
-    : `当前是${hour}点（${meal}时间），正常为用户推荐${meal}。`
-
-  const systemPrompt = `你是温暖活泼的AI饮食助手"小橙"，说话像朋友，亲切有趣，偶尔俏皮。
-
-用户信息：
-- ${userStore.age}岁 ${userStore.gender}生，${userStore.height}cm / ${userStore.weight}kg
-- 估算BMI：${bmi}，体脂率约 ${bf}%
-- 所在城市：${userStore.region}
-- 饮食习惯：${userStore.habits.join('、')}
-- 饮食目标：${userStore.goals.join('、')}
-
-${lateCtx}
-
-回复规则：
-1. 口语化，不超过200字
-2. 推荐餐食时给出2-3个选项+热量参考
-3. 涉及运动建议时，结合用户体脂率（${bf}%）给出针对性、具体的运动方式和时长
-4. 晚上19点后拒绝推荐正餐，改为鼓励控制饮食或推荐运动
-5. 结尾加一句鼓励，适当用emoji`
-
   loading.value = true
   addItem({ type: 'typing' })
 
   try {
     const { reply } = await sendChat({
       userId: userStore.id,
-      message: text,
-      systemPrompt,
-      history: conversationHistory.value
+      message: text
     })
-
-    conversationHistory.value.push({ role: 'user', content: text })
-    conversationHistory.value.push({ role: 'assistant', content: reply })
 
     removeTyping()
 
@@ -373,15 +343,12 @@ async function onConfirmCard(cardListItem, ci) {
 }
 
 async function fetchTips(card, isExercise) {
-  const bf = userStore.bodyFat
-  const bmi = userStore.bmi.toFixed(1)
-
   const tipPrompt = isExercise
     ? `用户选择了「${card.name}」作为今天的运动，时长${card.duration || '未知'}。
-用户体脂率${bf}%，BMI ${bmi}，${userStore.age}岁${userStore.gender}生，饮食目标：${userStore.goals.join('、')}。
+${userStore.age}岁${userStore.gender}生，饮食目标：${userStore.goals.join('、')}。
 请用温暖活泼的语气给出3条具体注意事项，每条一行，加相关emoji，总字数不超过120字。`
     : `用户选择了「${card.name}」（约${card.calories || '未知热量'}）作为今天的餐食。
-用户体脂率${bf}%，BMI ${bmi}，${userStore.age}岁${userStore.gender}生，所在城市${userStore.region}，饮食目标：${userStore.goals.join('、')}。
+${userStore.age}岁${userStore.gender}生，所在城市${userStore.region}，饮食目标：${userStore.goals.join('、')}。
 请用温暖活泼的语气给出3条具体注意事项（如进食时机、搭配建议、禁忌），每条一行，加相关emoji，总字数不超过120字。`
 
   addItem({ type: 'typing' })
