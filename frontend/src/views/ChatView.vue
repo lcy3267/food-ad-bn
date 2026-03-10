@@ -433,11 +433,13 @@ onMounted(() => scrollBottom())
   background: #F7F3EF;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  height: 100%;
 }
 
 .chat-header {
   background: white;
-  padding: 48px 20px 16px;
+  padding: 24px 24px 16px;
   display: flex; align-items: center; gap: 12px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.06);
   flex-shrink: 0;
@@ -472,9 +474,13 @@ onMounted(() => scrollBottom())
 
 /* Messages */
 .messages-area {
-  flex: 1; overflow-y: auto; padding: 20px 16px;
+  flex: 1; overflow-y: auto; padding: 20px 24px;
   display: flex; flex-direction: column; gap: 12px;
   scrollbar-width: none;
+  max-width: 900px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 .messages-area::-webkit-scrollbar { display: none; }
 
@@ -574,12 +580,15 @@ onMounted(() => scrollBottom())
 
 /* Input area */
 .input-area {
-  background: white; padding: 12px 16px 28px;
+  background: white; padding: 12px 24px 24px;
   border-top: 1px solid rgba(0,0,0,0.04);
   display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0;
 }
 .chat-input-wrap {
   flex: 1; background: #F7F3EF; border-radius: 22px; padding: 10px 16px;
+  max-width: calc(900px - 60px);
+  margin: 0 auto;
+  width: 100%;
 }
 .chat-input {
   width: 100%; background: transparent; border: none; outline: none;

@@ -206,6 +206,8 @@ async function startApp() {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  width: 100%;
+  height: 100%;
 }
 
 .onboard-scroll {
@@ -253,7 +255,13 @@ async function startApp() {
   transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
 }
 
-.form-container { padding: 20px 28px 110px; }
+.form-container { 
+  padding: 20px 28px 110px;
+  max-width: 600px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
 
 .step-card {
   background: white; border-radius: var(--radius);
@@ -348,7 +356,9 @@ input[type="range"]::-webkit-slider-thumb {
   pointer-events: none;
 }
 .btn-start {
-  width: 100%; padding: 18px; border-radius: 18px;
+  width: 100%; max-width: 600px; margin: 0 auto;
+  display: block;
+  padding: 18px; border-radius: 18px;
   background: linear-gradient(135deg, #FF6B35, #FF8C42);
   color: white; font-size: 17px; font-weight: 700;
   border: none; cursor: pointer;
