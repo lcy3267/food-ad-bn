@@ -22,6 +22,7 @@ model User {
 
   messages  Message[]
   selections Selection[]
+  aiLogs    AiCallLog[]
 }
 
 model Message {
@@ -45,4 +46,19 @@ model Selection {
   burn       String   @default("")
   chosenAt   String   @default("")
   user       User     @relation(fields: [userId], references: [id])
+}
+
+model AiCallLog {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id])
+
+  model        String
+  endpoint     String
+  prompt       String
+  reply        String
+  userSnapshot String?
+  meta         String?
 }

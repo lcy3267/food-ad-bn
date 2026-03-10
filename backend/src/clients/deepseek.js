@@ -5,7 +5,8 @@ export async function deepseekChat({
   systemPrompt,
   messages,
   model = 'deepseek-chat',
-  max_tokens = 1000
+  max_tokens = 1000,
+  temperature = 1
 }) {
   if (!apiKey) {
     const err = new Error('DEEPSEEK_API_KEY not configured')
@@ -22,6 +23,7 @@ export async function deepseekChat({
     body: JSON.stringify({
       model,
       max_tokens,
+      temperature,
       system: systemPrompt,
       messages
     })

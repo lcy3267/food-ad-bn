@@ -1,4 +1,5 @@
 import { sendUserMessageAndGetReply } from '../services/chatService.js'
+import { logAiCall } from '../services/aiLogService.js'
 
 export default async function aiRoutes(app) {
   app.post('/api/chat', async (req, reply) => {
@@ -42,6 +43,17 @@ export default async function aiRoutes(app) {
 
     const data = await response.json()
     const text = data.choices?.[0]?.message?.content || ''
+
+    await logAiCall({
+      user: null,
+      userId: null,
+      model: 'deepseek',
+      endpoint: '/api/extract',
+      prompt: { prompt },
+      reply: text,
+      meta: null
+    })
+
     return { text }
   })
 
@@ -68,6 +80,17 @@ export default async function aiRoutes(app) {
 
     const data = await response.json()
     const text = data.choices?.[0]?.message?.content || ''
+
+    await logAiCall({
+      user: null,
+      userId: null,
+      model: 'deepseek',
+      endpoint: '/api/tips',
+      prompt: { prompt },
+      reply: text,
+      meta: null
+    })
+
     return { text }
   })
 }

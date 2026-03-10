@@ -1,5 +1,12 @@
 <template>
   <div class="onboard-screen">
+    <button
+      v-if="showBackToChat"
+      class="ob-back-btn"
+      @click="backToChat"
+    >
+      ← 返回聊天
+    </button>
     <!-- Scrollable content -->
     <div class="onboard-scroll" ref="scrollEl">
       <!-- Header -->
@@ -17,7 +24,7 @@
       <div class="form-container">
 
         <!-- 年龄 -->
-        <div class="step-card" style="animation-delay:0.05s">
+        <div class="step-card" style="animation-delay:0.05s" v-if="!hideBodyInputs">
           <div class="step-label">基本信息</div>
           <div class="step-question">你今年多大啦？🎂</div>
           <div class="slider-row">
@@ -45,7 +52,7 @@
         </div>
 
         <!-- 身高体重 -->
-        <div class="step-card" style="animation-delay:0.15s">
+        <div class="step-card" style="animation-delay:0.15s" v-if="!hideBodyInputs">
           <div class="step-label">身体数据</div>
           <div class="step-question">身高体重各是多少呢？📏</div>
           <div class="sub-label">身高</div>
@@ -104,7 +111,7 @@
     <!-- Floating CTA -->
     <div class="ob-float-bar">
       <button class="btn-start" @click="startApp" :disabled="saving">
-        {{ saving ? '保存中...' : '开始我的饮食之旅 🚀' }}
+        {{ primaryCtaLabel }}
       </button>
     </div>
 
@@ -137,26 +144,30 @@ const form = ref({
 })
 
 // Sync from store after it loads
-watch(() => userStore.loaded, (v) => {
-  if (!v) return
-  checking.value = false
-  
-  // 如果用户信息已完整且不是从聊天页过来，自动跳转到聊天界面
-  if (userStore.isProfileComplete && !userStore.fromChat) {
-    router.push('/chat')
-    return
-  }
-  
-  form.value = {
-    age: userStore.age,
-    gender: userStore.gender,
-    height: userStore.height,
-    weight: userStore.weight,
-    region: userStore.region,
-    habits: [...userStore.habits],
-    goals: [...userStore.goals]
-  }
-})
+watch(
+  () => userStore.loaded,
+  (v) => {
+    if (!v) return
+    checking.value = false
+
+    // 如果用户信息已完整且不是从聊天页过来，自动跳转到聊天界面
+    if (userStore.isProfileComplete && !userStore.fromChat) {
+      router.push('/chat')
+      return
+    }
+
+    form.value = {
+      age: userStore.age,
+      gender: userStore.gender,
+      height: userStore.height,
+      weight: userStore.weight,
+      region: userStore.region,
+      habits: [...userStore.habits],
+      goals: [...userStore.goals]
+    }
+  },
+  { immediate: true }
+)
 
 const progressPct = computed(() => {
   let s = 25
@@ -165,6 +176,17 @@ const progressPct = computed(() => {
   if (form.value.habits.length) s += 20
   if (form.value.goals.length)  s += 20
   return Math.min(s, 100)
+})
+
+const hideBodyInputs = computed(() =>
+  userStore.fromChat && userStore.isProfileComplete
+)
+
+const showBackToChat = computed(() => userStore.fromChat)
+
+const primaryCtaLabel = computed(() => {
+  if (saving.value) return '保存中...'
+  return userStore.fromChat ? '保存' : '开始我的饮食之旅 🚀'
 })
 
 function sliderStyle(val, min, max) {
@@ -187,6 +209,10 @@ function toggleGoal(g) {
 function showToast(msg) {
   toast.value = msg
   setTimeout(() => toast.value = '', 2200)
+}
+
+function backToChat() {
+  router.push('/chat')
 }
 
 async function startApp() {
@@ -217,6 +243,21 @@ async function startApp() {
   overflow: hidden;
   width: 100%;
   height: 100%;
+}
+
+.ob-back-btn {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 30;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(255,255,255,0.9);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  font-size: 13px;
+  color: var(--brown);
+  cursor: pointer;
 }
 
 .onboard-scroll {

@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma.js'
 import { buildSystemPrompt } from '../prompts/buildSystemPrompt.js'
 import { deepseekChat } from '../clients/deepseek.js'
+import { logAiCall } from './aiLogService.js'
 
 function toDeepSeekMessages(dbMessages) {
   return (dbMessages || [])
@@ -48,6 +49,15 @@ export async function sendUserMessageAndGetReply({
   const messages = toDeepSeekMessages(history)
 
   const apiKey = process.env.DEEPSEEK_API_KEY || ''
+  const contextPrompt = {
+    system: systemPrompt,
+    lastUserMessage: message
+  }
+  console.log('DeepSeek chat prompt:', {
+    userId,
+    ...contextPrompt
+  })
+
   const data = await deepseekChat({
     apiKey,
     systemPrompt,
@@ -57,6 +67,21 @@ export async function sendUserMessageAndGetReply({
 
   const replyText =
     data?.choices?.[0]?.message?.content || '抱歉，小橙走神了，再说一遍吧～'
+
+  console.log('DeepSeek chat reply:', {
+    userId,
+    reply: replyText
+  })
+
+  await logAiCall({
+    user,
+    userId,
+    model: 'deepseek',
+    endpoint: '/api/chat',
+    prompt: contextPrompt,
+    reply: replyText,
+    meta: null
+  })
 
   await prisma.message.create({
     data: { userId, role: 'assistant', content: replyText }
