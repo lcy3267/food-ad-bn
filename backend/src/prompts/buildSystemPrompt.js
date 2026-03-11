@@ -9,14 +9,16 @@ function safeJsonArray(str) {
 }
 
 function calcMeal(hour) {
-  return hour < 14 ? '午餐' : '晚餐'
+  if (hour < 10) return '早餐'
+  if (hour < 14) return '午餐'
+  return '晚餐'
 }
 
 function isLateNight(hour) {
   return hour >= 19
 }
 
-export function buildSystemPrompt({ user, now = new Date(), tone = 'default' }) {
+export function buildSystemPrompt({ user, now = new Date(), tone = 'default', currentRequest = '' }) {
   const hour = now.getHours()
   const meal = calcMeal(hour)
   const late = isLateNight(hour)
@@ -42,7 +44,7 @@ export function buildSystemPrompt({ user, now = new Date(), tone = 'default' }) 
 
   const timeCtx = late
     ? `【重要】现在是晚上${hour}点，已过19:00。严禁推荐任何正餐或高热量食物。如果用户问吃什么，要用轻快幽默的语气劝阻，提醒控制饮食，最多推荐低热量无负担的选项（如温水、无糖茶、黄瓜）。`
-    : `当前是${hour}点（${meal}时间），正常为用户推荐${meal}。`
+    : `当前是${hour}点。【餐次必须正确】用户说推荐早餐就只推荐早餐，说推荐午餐就只推荐午餐，说推荐晚餐就只推荐晚餐；若用户未指定餐次，再按当前时间默认推荐${meal}。不要搞错餐次。`
 
   let dietStrategy = ''
   if (hasFatLossGoal && isDineInHabit) {
@@ -60,10 +62,16 @@ export function buildSystemPrompt({ user, now = new Date(), tone = 'default' }) 
 
   const rules = `回复规则：
 1. 口语化，一定不超过100字
-2. 推荐餐食时给出2-3个选项+热量参考
-3. 晚上19点后拒绝推荐正餐，改为鼓励控制饮食或推荐低负担选项
-4. 在涉及餐厅堂食且减脂目标时，优先优雅地给出适合当地的菜品或点餐组合建议
-5. 结尾加一句鼓励，适当用emoji`
+2. 回复使用纯文本，不要使用 **、## 等 markdown 符号，用 emoji 和自然语气即可
+3. 推荐餐食时给出2-3个选项+热量参考
+4. 晚上19点后拒绝推荐正餐，改为鼓励控制饮食或推荐低负担选项
+5. 在涉及餐厅堂食且减脂目标时，优先优雅地给出适合当地的菜品或点餐组合建议
+6. 结尾加一句鼓励，适当用emoji`
+
+  const currentRequestBlock =
+    currentRequest && typeof currentRequest === 'string' && currentRequest.trim()
+      ? `\n【本次用户需求】请针对用户本轮的这句话进行回复。用户本轮说：「${currentRequest.trim()}」`
+      : ''
 
   const systemPrompt = `${persona}
 
@@ -73,7 +81,7 @@ ${timeCtx}
 
 ${dietStrategy}
 
-${rules}`
+${rules}${currentRequestBlock}`
 
   return {
     systemPrompt,

@@ -23,7 +23,7 @@
         <!-- AI bubble -->
         <div v-else-if="item.type === 'ai'" class="msg-row msg-enter-active">
           <div class="msg-avatar">🍜</div>
-          <div class="bubble ai-bubble" v-html="item.text"></div>
+          <div class="bubble ai-bubble" v-html="stripMarkdownBold(item.text)"></div>
         </div>
 
         <!-- User bubble -->
@@ -128,6 +128,12 @@ const userAvatar = computed(() => {
 })
 
 function isLateNight() { return new Date().getHours() >= 19 }
+
+/** 去掉 AI 回复里的 ** 加粗符号，避免满屏星号 */
+function stripMarkdownBold(text) {
+  if (!text || typeof text !== 'string') return ''
+  return text.replace(/\*\*([^*]*)\*\*/g, '$1')
+}
 
 function addItem(item) {
   displayItems.value.push(item)

@@ -36,8 +36,8 @@ export async function sendUserMessageAndGetReply({
     data: { userId, role: 'user', content: message }
   })
 
-  // Build system prompt (core logic lives on backend)
-  const { systemPrompt } = buildSystemPrompt({ user, now, tone })
+  // Build system prompt (含本次用户需求，让模型优先响应用户本轮输入)
+  const { systemPrompt } = buildSystemPrompt({ user, now, tone, currentRequest: message })
 
   // Load history from DB (include the message we just wrote)
   const history = await prisma.message.findMany({
