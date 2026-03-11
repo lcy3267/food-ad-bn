@@ -78,13 +78,14 @@
       </template>
     </div>
 
-    <!-- Input area -->
+    <!-- Input area：与 AI 回复流程对接，请求中禁用，回复后重新聚焦 -->
     <div class="input-area">
       <div class="chat-input-wrap">
         <textarea class="chat-input" ref="inputEl"
           v-model="inputText"
           placeholder="问问小橙今天吃什么..."
           rows="1"
+          :disabled="loading"
           @keydown.enter.exact.prevent="sendMessage"
           @input="autoResize"
         ></textarea>
@@ -233,6 +234,7 @@ async function sendUserMsg(text) {
     addItem({ type: 'ai', text: refusals[Math.floor(Math.random() * refusals.length)] })
     await delay(400)
     addItem({ type: 'suggestions', items: ['推荐运动方式 🏃', '明天早餐计划 🌅', '喝什么比较好？'] })
+    nextTick(() => inputEl.value?.focus())
     return
   }
 
@@ -265,9 +267,13 @@ async function sendUserMsg(text) {
     }
     await delay(600)
     addItem({ type: 'suggestions', items: sugs })
+
+    // 回复展示完后聚焦输入框，方便继续输入
+    nextTick(() => inputEl.value?.focus())
   } catch (e) {
     removeTyping()
     addItem({ type: 'ai', text: '哎呀，小橙的网络有点小问题，稍后再试试吧～ 🙏' })
+    nextTick(() => inputEl.value?.focus())
   } finally {
     loading.value = false
   }
@@ -586,6 +592,7 @@ onMounted(() => scrollBottom())
   max-height: 80px; line-height: 1.5;
 }
 .chat-input::placeholder { color: rgba(61,31,0,0.3); }
+.chat-input:disabled { opacity: 0.7; cursor: not-allowed; }
 .send-btn {
   width: 44px; height: 44px; border-radius: 14px;
   background: linear-gradient(135deg, #FF6B35, #FF8C42);
