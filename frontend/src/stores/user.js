@@ -30,10 +30,9 @@ export const useUserStore = defineStore('user', () => {
   })
 
   async function init() {
-    // 检查是否从聊天页跳转过来
-    const fromChatStored = localStorage.getItem(FROM_CHAT_KEY)
-    if (fromChatStored === 'true') {
-      fromChat.value = true
+    // 仅清除上次遗留的标记，不把 fromChat 设为 true，避免新开页/刷新时误判
+    // fromChat 只在本会话内通过 setFromChat() 设为 true（用户点击设置从聊天页过来）
+    if (localStorage.getItem(FROM_CHAT_KEY) === 'true') {
       localStorage.removeItem(FROM_CHAT_KEY)
     }
 

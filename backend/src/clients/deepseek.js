@@ -14,6 +14,11 @@ export async function deepseekChat({
     throw err
   }
 
+  const allMessages = [
+    { role: 'system', content: systemPrompt },
+    ...(messages || [])
+  ]
+
   const response = await fetch(DEEPSEEK_URL, {
     method: 'POST',
     headers: {
@@ -24,8 +29,7 @@ export async function deepseekChat({
       model,
       max_tokens,
       temperature,
-      system: systemPrompt,
-      messages
+      messages: allMessages
     })
   })
 

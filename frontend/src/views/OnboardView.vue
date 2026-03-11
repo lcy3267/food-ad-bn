@@ -123,7 +123,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user.js'
 
@@ -143,31 +143,43 @@ const form = ref({
   region: '', habits: [], goals: []
 })
 
-// Sync from store after it loads
+function tryRedirectToChat() {
+  if (!userStore.loaded) return
+  checking.value = false
+  if (userStore.isProfileComplete && !userStore.fromChat) {
+    router.push('/chat')
+    return true
+  }
+  return false
+}
+
+function syncFormFromStore() {
+  form.value = {
+    age: userStore.age,
+    gender: userStore.gender,
+    height: userStore.height,
+    weight: userStore.weight,
+    region: userStore.region,
+    habits: [...userStore.habits],
+    goals: [...userStore.goals]
+  }
+}
+
+// 监听 loaded 与 isProfileComplete，任一变化都检查是否需要跳转
 watch(
-  () => userStore.loaded,
-  (v) => {
-    if (!v) return
-    checking.value = false
-
-    // 如果用户信息已完整且不是从聊天页过来，自动跳转到聊天界面
-    if (userStore.isProfileComplete && !userStore.fromChat) {
-      router.push('/chat')
-      return
-    }
-
-    form.value = {
-      age: userStore.age,
-      gender: userStore.gender,
-      height: userStore.height,
-      weight: userStore.weight,
-      region: userStore.region,
-      habits: [...userStore.habits],
-      goals: [...userStore.goals]
-    }
+  () => ({ loaded: userStore.loaded, complete: userStore.isProfileComplete, fromChat: userStore.fromChat }),
+  (state) => {
+    if (!state.loaded) return
+    if (tryRedirectToChat()) return
+    syncFormFromStore()
   },
   { immediate: true }
 )
+
+// 兜底：挂载后下一帧再检查一次，避免 init() 刚完成时 computed 未及时更新
+onMounted(() => {
+  nextTick(() => tryRedirectToChat())
+})
 
 const progressPct = computed(() => {
   let s = 25

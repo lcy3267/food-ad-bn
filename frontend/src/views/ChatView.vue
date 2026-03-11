@@ -247,12 +247,8 @@ async function sendUserMsg(text) {
 
     removeTyping()
 
-    // Determine context
-    const foodKW = ['推荐','吃什么','午餐','早餐','晚餐','饮食','营养','搭配','菜','饭','食']
-    const isFoodCtx = foodKW.some(k => text.includes(k))
-    const ctx = wantsExercise ? 'exercise' : isFoodCtx ? 'food' : 'plain'
-
-    await renderReply(reply, ctx)
+    // 暂时取消卡片/结构化抽取，直接展示 AI 文本回复
+    addItem({ type: 'ai', text: reply })
 
     // Suggestions
     let sugs
