@@ -7,7 +7,8 @@
     "start": "node src/index.js",
     "db:generate": "npx prisma generate",
     "db:push": "npx prisma db push",
-    "db:show": "npx prisma studio"
+    "db:show": "npx prisma studio",
+    "db:clear": "node scripts/clearDb.js"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",

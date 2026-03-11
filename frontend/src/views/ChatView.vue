@@ -42,35 +42,7 @@
           </div>
         </div>
 
-        <!-- Card list (food or exercise) -->
-        <transition
-          name="card-collapse"
-          v-else-if="item.type === 'cards' && !item.collapsed"
-        >
-          <div class="card-list msg-enter-active">
-            <RecCard
-              v-for="(card, ci) in item.cards"
-              :key="ci"
-              :card="card"
-              :confirmed="item.confirmedIdx === ci"
-              :faded="item.confirmedIdx !== null && item.confirmedIdx !== ci"
-              @confirm="onConfirmCard(item, ci)"
-            />
-          </div>
-        </transition>
-
-        <!-- Confirmed pill -->
-        <div v-else-if="item.type === 'pill'" class="msg-enter-active"
-          :class="`confirmed-pill ${item.kind}-pill`">
-          <div class="pill-icon">{{ item.icon }}</div>
-          <span>已选：<strong>{{ item.name }}</strong></span>
-        </div>
-
-        <!-- Note bubble -->
-        <div v-else-if="item.type === 'note'" class="note-bubble msg-enter-active"
-          v-html="item.html"></div>
-
-        <!-- Suggestions -->
+        <!-- Suggestions (e.g. 吃点其他的) -->
         <div v-else-if="item.type === 'suggestions'" class="suggestion-row msg-enter-active">
           <div v-for="sug in item.items" :key="sug" class="sug-chip"
             @click="onSuggestion(item, sug)">{{ sug }}</div>
@@ -99,8 +71,7 @@
 import { ref, computed, nextTick, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user.js'
-import { sendChat, extractStructured, getTips, saveSelection } from '../api/index.js'
-import RecCard from '../components/RecCard.vue'
+import { getMessages, postChat } from '../api/index.js'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -109,6 +80,7 @@ const inputEl = ref(null)
 const inputText = ref('')
 const loading = ref(false)
 const displayItems = ref([])
+const initDone = ref(false)
 
 const userAvatar = computed(() => {
   const age = userStore.age
@@ -127,9 +99,6 @@ const userAvatar = computed(() => {
   return '🧑'
 })
 
-function isLateNight() { return new Date().getHours() >= 19 }
-
-/** 去掉 AI 回复里的 ** 加粗符号，避免满屏星号 */
 function stripMarkdownBold(text) {
   if (!text || typeof text !== 'string') return ''
   return text.replace(/\*\*([^*]*)\*\*/g, '$1')
@@ -151,56 +120,61 @@ function scrollBottom() {
   })
 }
 
-async function initChat() {
-  const hour = new Date().getHours()
-  const late = isLateNight()
-  const meal = hour < 14 ? '午餐' : '晚餐'
-  const bf = userStore.bodyFat
+function historyToItems(history) {
+  return (history || []).map(m => ({
+    type: m.role === 'assistant' ? 'ai' : 'user',
+    text: m.content
+  }))
+}
 
-  // Message 1
-  await delay(400)
-  addItem({ type: 'ai', text: '嗨～你好！我是你的专属饮食助手小橙 🍊' })
+async function loadChat() {
+  if (!userStore.id) return
+  const history = await getMessages(userStore.id)
+  displayItems.value = [
+    { type: 'divider', text: '刚刚' },
+    ...historyToItems(history)
+  ]
+  scrollBottom()
 
-  await delay(600)
-  addItem({ type: 'typing' })
-
-  await delay(1200)
-  removeTyping()
-  if (late) {
-    addItem({ type: 'ai', text: `🌙 现在都 ${hour} 点啦，肠胃已经快要下班了哦～` })
-  } else {
-    addItem({ type: 'ai', text: `${hour < 14 ? '🌞' : '🌆'} 现在是 ${hour} 点，你是不是在纠结${meal}吃什么？` })
-  }
-
-  await delay(500)
-  addItem({ type: 'typing' })
-
-  await delay(1800)
-  removeTyping()
-  if (late) {
-    addItem({ type: 'ai', text: '晚上这个点再吃东西，热量可不好消耗哦！嘴馋的话喝杯温水或来片黄瓜解解馋吧 🥒✨' })
-  } else {
-    addItem({ type: 'ai', text: `我已经了解了你的信息：${userStore.age}岁${userStore.gender}生、身处${userStore.region}，目标是「${userStore.goals.join(' + ')}」～让我来帮你规划今天的${meal}！` })
-  }
-
-  await delay(500)
-  addItem({ type: 'typing' })
-
-  await delay(1800)
-  removeTyping()
-
-  if (late) {
-    const bfNum = parseFloat(bf)
-    const isMale = userStore.gender === '男'
-    const bfHigh = isMale ? bfNum > 20 : bfNum > 28
-    if (bfHigh) {
-      addItem({ type: 'ai', text: `顺便说一下，根据你的身高体重估算，体脂率大约是 ${bf}%，稍微偏高一丢丢 😅 要不要小橙帮你推荐几个适合你的运动方式？` })
-    } else {
-      addItem({ type: 'ai', text: `根据你的身高体重估算，体脂率大约是 ${bf}%，状态不错哦 💪 想趁晚上动一动吗？要不要推荐几个适合的运动？` })
+  if (history.length === 0) {
+    addItem({ type: 'typing' })
+    try {
+      const { reply } = await postChat({ userId: userStore.id, action: 'welcome' })
+      removeTyping()
+      addItem({ type: 'ai', text: reply })
+    } catch {
+      removeTyping()
+      addItem({ type: 'ai', text: '欢迎使用小橙饮食助手～' })
     }
-    addItem({ type: 'suggestions', items: ['推荐运动方式 🏃', '明天的饮食计划', '我就随便看看 👀'] })
   } else {
-    addItem({ type: 'suggestions', items: [`帮我推荐${meal}`, '查看饮食注意事项', '今天的营养搭配'] })
+    addItem({ type: 'typing' })
+    try {
+      const { reply } = await postChat({ userId: userStore.id, action: 'mealRecommend' })
+      removeTyping()
+      addItem({ type: 'ai', text: reply })
+      addItem({ type: 'suggestions', items: ['吃点其他的'] })
+    } catch {
+      removeTyping()
+      addItem({ type: 'ai', text: '来点当季时令菜吧～' })
+      addItem({ type: 'suggestions', items: ['吃点其他的'] })
+    }
+  }
+  initDone.value = true
+}
+
+async function requestOtherMeal() {
+  const sugIdx = displayItems.value.findLastIndex(i => i.type === 'suggestions')
+  if (sugIdx >= 0) displayItems.value.splice(sugIdx, 1)
+  addItem({ type: 'typing' })
+  try {
+    const { reply } = await postChat({ userId: userStore.id, action: 'mealRecommend' })
+    removeTyping()
+    addItem({ type: 'ai', text: reply })
+    addItem({ type: 'suggestions', items: ['吃点其他的'] })
+  } catch {
+    removeTyping()
+    addItem({ type: 'ai', text: '来点当季时令菜吧～' })
+    addItem({ type: 'suggestions', items: ['吃点其他的'] })
   }
 }
 
@@ -209,181 +183,32 @@ async function sendMessage() {
   if (!text || loading.value) return
   inputText.value = ''
   if (inputEl.value) inputEl.value.style.height = ''
-  await sendUserMsg(text)
-}
 
-async function sendUserMsg(text) {
-  // Remove any existing suggestion row
   const sugIdx = displayItems.value.findLastIndex(i => i.type === 'suggestions')
   if (sugIdx >= 0) displayItems.value.splice(sugIdx, 1)
 
   addItem({ type: 'user', text })
-
-  const hour = new Date().getHours()
-  const late = isLateNight()
-  const meal = hour < 14 ? '午餐' : '晚餐'
-
-  const wantsExercise = ['运动','健身','锻炼','跑步','减肥','燃脂','瑜伽','步行','有氧'].some(k => text.includes(k))
-  const wantsFoodLate = !wantsExercise && late &&
-    ['吃','推荐','晚餐','饿','夜宵','宵夜'].some(k => text.includes(k))
-
-  if (wantsFoodLate) {
-    const refusals = [
-      '哎呀，都这么晚了还想着吃？肠胃要罢工啦 😂 喝杯温水，撑过去就胜利了！',
-      '晚上吃东西热量存储效率超高哦，脂肪细胞正在摩拳擦掌等你呢 😅 忍住忍住～',
-      '嘴馋的感觉我懂，但现在离睡觉没多久了！来片黄瓜或喝杯白开水，一样满足 🥒',
-    ]
-    await delay(200)
-    addItem({ type: 'typing' })
-    await delay(1000)
-    removeTyping()
-    addItem({ type: 'ai', text: refusals[Math.floor(Math.random() * refusals.length)] })
-    await delay(400)
-    addItem({ type: 'suggestions', items: ['推荐运动方式 🏃', '明天早餐计划 🌅', '喝什么比较好？'] })
-    nextTick(() => inputEl.value?.focus())
-    return
-  }
-
   loading.value = true
   addItem({ type: 'typing' })
 
   try {
-    const { reply } = await sendChat({
-      userId: userStore.id,
-      message: text
-    })
-
+    const res = await postChat({ userId: userStore.id, message: text })
     removeTyping()
-
-    // 暂时取消卡片/结构化抽取，直接展示 AI 文本回复
-    addItem({ type: 'ai', text: reply })
-
-    // Suggestions
-    let sugs
-    if (text.includes('运动')) {
-      sugs = ['运动计划详情 📋', '运动后吃什么？', '我有点懒怎么办 😂']
-    } else if (late) {
-      sugs = ['推荐运动方式 🏃', '明天早餐计划 🌅', '今天喝什么好？']
-    } else if (text.includes('推荐') || text.includes('吃什么')) {
-      sugs = ['详细营养分析', '换一个推荐', '购物清单']
-    } else if (text.includes('注意') || text.includes('建议')) {
-      sugs = [`今天的${meal}推荐`, '一周饮食计划', '食材搭配']
-    } else {
-      sugs = late ? ['推荐运动方式 🏃', '明天饮食计划'] : [`${meal}推荐`, '营养搭配建议']
-    }
-    await delay(600)
-    addItem({ type: 'suggestions', items: sugs })
-
-    // 回复展示完后聚焦输入框，方便继续输入
-    nextTick(() => inputEl.value?.focus())
-  } catch (e) {
+    addItem({ type: 'ai', text: res.reply })
+    if (res.showOtherButton) addItem({ type: 'suggestions', items: ['吃点其他的'] })
+  } catch {
     removeTyping()
     addItem({ type: 'ai', text: '哎呀，小橙的网络有点小问题，稍后再试试吧～ 🙏' })
-    nextTick(() => inputEl.value?.focus())
   } finally {
     loading.value = false
   }
-}
-
-async function renderReply(rawReply, context) {
-  if (context === 'plain') {
-    addItem({ type: 'ai', text: rawReply })
-    return
-  }
-
-  const isExercise = context === 'exercise'
-  const extractPrompt = isExercise
-    ? `请从以下运动建议文字中提取结构化数据，最多3项，严格只返回JSON不含其他文字：
-{"intro":"一句开场白","items":[{"name":"运动名","icon":"emoji","duration":"时长","burn":"消耗热量","desc":"一句说明"}],"tip":"一句鼓励"}
-原文：${rawReply}`
-    : `请从以下餐食推荐文字中提取结构化数据，最多3项，严格只返回JSON不含其他文字：
-{"intro":"一句开场白","items":[{"name":"食物名","icon":"emoji","calories":"热量","desc":"一句说明","tags":["标签"]}],"tip":"一句注意事项"}
-原文：${rawReply}`
-
-  addItem({ type: 'typing' })
-  try {
-    const { text } = await extractStructured(extractPrompt)
-    const json = JSON.parse(text.replace(/```json|```/g, '').trim())
-    const items = (json.items || []).slice(0, 3)
-    removeTyping()
-
-    if (json.intro) addItem({ type: 'ai', text: json.intro })
-
-    if (items.length) {
-      const cardItem = {
-        type: 'cards',
-        cards: items.map(i => ({ ...i, cardType: isExercise ? 'exercise' : 'food' })),
-        confirmedIdx: null
-      }
-      await delay(300)
-      addItem(cardItem)
-    }
-  } catch {
-    removeTyping()
-    addItem({ type: 'ai', text: rawReply })
-  }
-}
-
-async function onConfirmCard(cardListItem, ci) {
-  if (cardListItem.confirmedIdx !== null) return // already confirmed
-  cardListItem.confirmedIdx = ci
-  const card = cardListItem.cards[ci]
-  const isExercise = card.cardType === 'exercise'
-
-  // Save to DB
-  if (userStore.id) {
-    await saveSelection(userStore.id, {
-      type: isExercise ? 'exercise' : 'food',
-      name: card.name,
-      icon: card.icon || '',
-      calories: card.calories || '',
-      duration: card.duration || '',
-      burn: card.burn || '',
-      chosenAt: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-    }).catch(() => {})
-  }
-
-  await delay(400)
-  addItem({
-    type: 'pill',
-    kind: isExercise ? 'exercise' : 'food',
-    icon: card.icon || (isExercise ? '🏃' : '🍽️'),
-    name: card.name
-  })
-
-  await delay(800)
-  await fetchTips(card, isExercise)
-
-  // Collapse card list after we have shown follow-up content
-  cardListItem.collapsed = true
-}
-
-async function fetchTips(card, isExercise) {
-  const tipPrompt = isExercise
-    ? `用户选择了「${card.name}」作为今天的运动，时长${card.duration || '未知'}。
-${userStore.age}岁${userStore.gender}生，饮食目标：${userStore.goals.join('、')}。
-请用温暖活泼的语气给出3条具体注意事项，每条一行，加相关emoji，总字数不超过120字。`
-    : `用户选择了「${card.name}」（约${card.calories || '未知热量'}）作为今天的餐食。
-${userStore.age}岁${userStore.gender}生，所在城市${userStore.region}，饮食目标：${userStore.goals.join('、')}。
-请用温暖活泼的语气给出3条具体注意事项（如进食时机、搭配建议、禁忌），每条一行，加相关emoji，总字数不超过120字。`
-
-  addItem({ type: 'typing' })
-  try {
-    const { text } = await getTips(tipPrompt)
-    removeTyping()
-    addItem({
-      type: 'note',
-      html: '<strong>小橙提醒你 💡</strong><br>' + text.replace(/\n/g, '<br>')
-    })
-  } catch {
-    removeTyping()
-  }
+  nextTick(() => inputEl.value?.focus())
 }
 
 function onSuggestion(sugItem, sug) {
   const idx = displayItems.value.indexOf(sugItem)
   if (idx >= 0) displayItems.value.splice(idx, 1)
-  sendUserMsg(sug)
+  if (sug === '吃点其他的') requestOtherMeal()
 }
 
 function autoResize() {
@@ -394,18 +219,12 @@ function autoResize() {
 }
 
 function goBack() {
-  // 标记是从聊天页跳转过来的，避免在 OnboardView 自动跳回
   userStore.setFromChat()
   router.push('/')
 }
 
-function delay(ms) {
-  return new Promise(r => setTimeout(r, ms))
-}
-
-// Init when user store is ready
-watch(() => userStore.loaded, async (v) => {
-  if (v) await initChat()
+watch(() => userStore.loaded, (v) => {
+  if (v && !initDone.value) loadChat()
 }, { immediate: true })
 
 onMounted(() => scrollBottom())

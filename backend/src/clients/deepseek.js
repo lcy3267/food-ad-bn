@@ -1,28 +1,19 @@
-// 与官方文档一致：https://api-docs.deepseek.com/zh-cn/  POST /chat/completions
 const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions'
 
-export async function deepseekChat({
-  apiKey,
-  systemPrompt,
-  messages,
-  model = 'deepseek-chat',
-  max_tokens = 1000,
-  temperature = 1
-}) {
+/**
+ * 调用 DeepSeek 对话补全，请求体符合官方文档。
+ * @param {{ apiKey: string, messages: Array<{role:string,content:string}>, max_tokens?: number, temperature?: number }}
+ */
+export async function deepseekChat({ apiKey, messages, max_tokens = 500, temperature = 0.8 }) {
   if (!apiKey) {
     const err = new Error('DEEPSEEK_API_KEY not configured')
     err.statusCode = 400
     throw err
   }
 
-  const allMessages = [
-    { role: 'system', content: systemPrompt || '你是一个有帮助的助手。' },
-    ...(messages || [])
-  ]
-
   const body = {
-    model,
-    messages: allMessages,
+    model: 'deepseek-chat',
+    messages,
     stream: false,
     max_tokens,
     temperature
@@ -49,4 +40,3 @@ export async function deepseekChat({
 
   return data
 }
-

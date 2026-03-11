@@ -1,9 +1,7 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import usersRoutes from './routes/users.js'
-import messagesRoutes from './routes/messages.js'
-import selectionsRoutes from './routes/selections.js'
-import aiRoutes from './routes/ai.js'
+import chatRoutes from './routes/chat.js'
 
 const app = Fastify({ logger: true })
 
@@ -13,9 +11,7 @@ await app.register(cors, {
 })
 
 await app.register(usersRoutes)
-await app.register(messagesRoutes)
-await app.register(selectionsRoutes)
-await app.register(aiRoutes)
+await app.register(chatRoutes)
 
 // Start server
 try {
